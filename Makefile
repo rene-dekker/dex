@@ -9,6 +9,7 @@ VERSION ?= $(shell ./scripts/git-version)
 
 DOCKER_REPO=quay.io/dexidp/dex
 DOCKER_IMAGE=$(DOCKER_REPO):$(VERSION)
+DOCKER_IMAGE_LOCAL=dex:$(VERSION)
 
 $( shell mkdir -p bin )
 
@@ -97,9 +98,10 @@ lint: bin/golangci-lint ## Run linter
 fix: bin/golangci-lint ## Fix lint violations
 	bin/golangci-lint run --fix
 
+# thankfully semaphore allows paswordless sudo
 .PHONY: docker-image
 docker-image:
-	@sudo docker build -t $(DOCKER_IMAGE) .
+	@sudo docker build -t $(DOCKER_IMAGE) ${EXTRA_TAGS} .
 
 .PHONY: proto-old
 proto-old: bin/protoc-old bin/protoc-gen-go-old
