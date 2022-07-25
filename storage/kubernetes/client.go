@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver"
+	"github.com/dexidp/dex/storage/tigeratls"
 	"github.com/ghodss/yaml"
 	"golang.org/x/net/http2"
 
@@ -289,17 +290,7 @@ func (cli *client) put(resource, name string, v interface{}) error {
 
 // Copied from https://github.com/gtank/cryptopasta
 func defaultTLSConfig() *tls.Config {
-	return &tls.Config{
-		// Avoids most of the memorably-named TLS attacks
-		MinVersion: tls.VersionTLS12,
-		// Causes servers to use Go's default ciphersuite preferences,
-		// which are tuned to avoid attacks. Does nothing on clients.
-		PreferServerCipherSuites: true,
-		// Only use curves which have constant-time implementations
-		CurvePreferences: []tls.CurveID{
-			tls.CurveP256,
-		},
-	}
+	return tigeratls.NewTLSConfig(os.Getenv("FIPS_MODE_ENABLED") == "true")
 }
 
 func newClient(cluster k8sapi.Cluster, user k8sapi.AuthInfo, namespace string, logger log.Logger, inCluster bool) (*client, error) {

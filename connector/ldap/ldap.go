@@ -10,6 +10,7 @@ import (
 	"net"
 	"os"
 
+	"github.com/dexidp/dex/storage/tigeratls"
 	"github.com/go-ldap/ldap/v3"
 
 	"github.com/dexidp/dex/connector"
@@ -253,7 +254,9 @@ func (c *Config) openConnector(logger log.Logger) (*ldapConnector, error) {
 		}
 	}
 
-	tlsConfig := &tls.Config{ServerName: host, InsecureSkipVerify: c.InsecureSkipVerify}
+	tlsConfig := tigeratls.NewTLSConfig(os.Getenv("FIPS_MODE_ENABLED") == "true")
+	tlsConfig.ServerName = host
+	tlsConfig.InsecureSkipVerify = c.InsecureSkipVerify
 	if c.RootCA != "" || len(c.RootCAData) != 0 {
 		data := c.RootCAData
 		if len(data) == 0 {

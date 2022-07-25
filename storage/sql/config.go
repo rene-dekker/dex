@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dexidp/dex/storage/tigeratls"
 	"github.com/go-sql-driver/mysql"
 	"github.com/lib/pq"
 
@@ -317,7 +318,7 @@ func (s *MySQL) open(logger log.Logger) (*conn, error) {
 }
 
 func (s *MySQL) makeTLSConfig() error {
-	cfg := &tls.Config{}
+	cfg := tigeratls.NewTLSConfig(os.Getenv("FIPS_MODE_ENABLED") == "true")
 	if s.SSL.CAFile != "" {
 		rootCertPool := x509.NewCertPool()
 		pem, err := os.ReadFile(s.SSL.CAFile)

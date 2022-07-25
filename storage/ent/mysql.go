@@ -13,6 +13,7 @@ import (
 	"time"
 
 	entSQL "entgo.io/ent/dialect/sql"
+	"github.com/dexidp/dex/storage/tigeratls"
 	"github.com/go-sql-driver/mysql"
 
 	// Register postgres driver.
@@ -130,7 +131,7 @@ func (m *MySQL) dsn(tlsConfig string) string {
 }
 
 func (m *MySQL) makeTLSConfig() error {
-	cfg := &tls.Config{}
+	cfg := tigeratls.NewTLSConfig(os.Getenv("FIPS_MODE_ENABLED") == "true")
 
 	if m.SSL.CAFile != "" {
 		rootCertPool := x509.NewCertPool()

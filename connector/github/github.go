@@ -3,8 +3,6 @@ package github
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -17,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dexidp/dex/storage/tigeratls"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/github"
 
@@ -210,7 +209,7 @@ func (e *oauth2Error) Error() string {
 
 // newHTTPClient returns a new HTTP client that trusts the custom declared rootCA cert.
 func newHTTPClient(rootCA string) (*http.Client, error) {
-	tlsConfig := tls.Config{RootCAs: x509.NewCertPool()}
+	tlsConfig := tigeratls.NewTLSConfig(os.Getenv("FIPS_MODE_ENABLED") == "true")
 	rootCABytes, err := os.ReadFile(rootCA)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read root-ca: %v", err)
@@ -221,7 +220,7 @@ func newHTTPClient(rootCA string) (*http.Client, error) {
 
 	return &http.Client{
 		Transport: &http.Transport{
-			TLSClientConfig: &tlsConfig,
+			TLSClientConfig: tlsConfig,
 			Proxy:           http.ProxyFromEnvironment,
 			DialContext: (&net.Dialer{
 				Timeout:   30 * time.Second,

@@ -17,6 +17,7 @@ import (
 	gosundheit "github.com/AppsFlyer/go-sundheit"
 	"github.com/AppsFlyer/go-sundheit/checks"
 	gosundheithttp "github.com/AppsFlyer/go-sundheit/http"
+	"github.com/dexidp/dex/storage/tigeratls"
 	"github.com/ghodss/yaml"
 	grpcprometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/oklog/run"
@@ -129,17 +130,6 @@ func runServe(options serveOptions) error {
 
 	var grpcOptions []grpc.ServerOption
 
-	allowedTLSCiphers := []uint16{
-		tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-		tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-		tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-		tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
-		tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
-		tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
-		tls.TLS_RSA_WITH_AES_128_GCM_SHA256,
-		tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
-	}
-
 	if c.GRPC.TLSCert != "" {
 		// Parse certificates from certificate file and key file for server.
 		cert, err := tls.LoadX509KeyPair(c.GRPC.TLSCert, c.GRPC.TLSKey)
@@ -147,12 +137,8 @@ func runServe(options serveOptions) error {
 			return fmt.Errorf("invalid config: error parsing gRPC certificate file: %v", err)
 		}
 
-		tlsConfig := tls.Config{
-			Certificates:             []tls.Certificate{cert},
-			MinVersion:               tls.VersionTLS12,
-			CipherSuites:             allowedTLSCiphers,
-			PreferServerCipherSuites: true,
-		}
+		tlsConfig := tigeratls.NewTLSConfig(os.Getenv("FIPS_MODE_ENABLED") == "true")
+		tlsConfig.Certificates = []tls.Certificate{cert}
 
 		if c.GRPC.TLSClientCA != "" {
 			// Parse certificates from client CA file to a new CertPool.
@@ -175,7 +161,7 @@ func runServe(options serveOptions) error {
 			)
 		}
 
-		grpcOptions = append(grpcOptions, grpc.Creds(credentials.NewTLS(&tlsConfig)))
+		grpcOptions = append(grpcOptions, grpc.Creds(credentials.NewTLS(tlsConfig)))
 	}
 
 	s, err := c.Storage.Config.Open(logger)
@@ -427,12 +413,8 @@ func runServe(options serveOptions) error {
 		}
 
 		server := &http.Server{
-			Handler: serv,
-			TLSConfig: &tls.Config{
-				CipherSuites:             allowedTLSCiphers,
-				PreferServerCipherSuites: true,
-				MinVersion:               tls.VersionTLS12,
-			},
+			Handler:   serv,
+			TLSConfig: tigeratls.NewTLSConfig(os.Getenv("FIPS_MODE_ENABLED") == "true"),
 		}
 		defer server.Close()
 

@@ -2,7 +2,6 @@ package openshift
 
 import (
 	"context"
-	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
@@ -13,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dexidp/dex/storage/tigeratls"
 	"golang.org/x/oauth2"
 
 	"github.com/dexidp/dex/connector"
@@ -218,12 +218,10 @@ func validateAllowedGroups(userGroups, allowedGroups []string) bool {
 
 // newHTTPClient returns a new HTTP client
 func newHTTPClient(insecureCA bool, rootCA string) (*http.Client, error) {
-	tlsConfig := tls.Config{}
-
-	if insecureCA {
-		tlsConfig = tls.Config{InsecureSkipVerify: true}
-	} else if rootCA != "" {
-		tlsConfig = tls.Config{RootCAs: x509.NewCertPool()}
+	tlsConfig := tigeratls.NewTLSConfig(os.Getenv("FIPS_MODE_ENABLED") == "true")
+	tlsConfig.InsecureSkipVerify = insecureCA
+	if rootCA != "" {
+		tlsConfig.RootCAs = x509.NewCertPool()
 		rootCABytes, err := os.ReadFile(rootCA)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read root-ca: %v", err)
@@ -235,7 +233,7 @@ func newHTTPClient(insecureCA bool, rootCA string) (*http.Client, error) {
 
 	return &http.Client{
 		Transport: &http.Transport{
-			TLSClientConfig: &tlsConfig,
+			TLSClientConfig: tlsConfig,
 			Proxy:           http.ProxyFromEnvironment,
 			DialContext: (&net.Dialer{
 				Timeout:   30 * time.Second,

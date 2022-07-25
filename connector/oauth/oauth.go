@@ -2,7 +2,6 @@ package oauth
 
 import (
 	"context"
-	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
@@ -14,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dexidp/dex/storage/tigeratls"
 	"golang.org/x/oauth2"
 
 	"github.com/dexidp/dex/connector"
@@ -121,12 +121,13 @@ func (c *Config) Open(id string, logger log.Logger) (connector.Connector, error)
 }
 
 func newHTTPClient(rootCAs []string, insecureSkipVerify bool) (*http.Client, error) {
+	tlsConfig := tigeratls.NewTLSConfig(os.Getenv("FIPS_MODE_ENABLED") == "true")
+	tlsConfig.InsecureSkipVerify = insecureSkipVerify
 	pool, err := x509.SystemCertPool()
 	if err != nil {
 		return nil, err
 	}
-
-	tlsConfig := tls.Config{RootCAs: pool, InsecureSkipVerify: insecureSkipVerify}
+	tlsConfig.RootCAs = pool
 	for _, rootCA := range rootCAs {
 		rootCABytes, err := os.ReadFile(rootCA)
 		if err != nil {
@@ -139,7 +140,7 @@ func newHTTPClient(rootCAs []string, insecureSkipVerify bool) (*http.Client, err
 
 	return &http.Client{
 		Transport: &http.Transport{
-			TLSClientConfig: &tlsConfig,
+			TLSClientConfig: tlsConfig,
 			Proxy:           http.ProxyFromEnvironment,
 			DialContext: (&net.Dialer{
 				Timeout:   30 * time.Second,
